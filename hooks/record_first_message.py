@@ -55,9 +55,14 @@ def main():
         if date != today:
             state = None
 
-        # "hi" triggers waiting state
+        # "hi" triggers waiting state and log the time
         if user_message.lower() == "hi":
             set_state("waiting")
+            # Record hi trigger time
+            LOG_DIR.mkdir(parents=True, exist_ok=True)
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            with open(LOG_FILE, "a") as f:
+                f.write(f"{timestamp} | [hi triggered]\n")
             sys.stderr.write(f"[Hook] Ready to record next message\n")
 
         # If waiting, record this message
