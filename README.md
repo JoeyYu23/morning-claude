@@ -1,39 +1,84 @@
-# Morning Claude
+# Morning Claude ☀️
 
-Automatically opens Terminal and starts Claude Code at a scheduled time every day.
+A macOS automation tool that starts your day with Claude Code. Automatically opens Terminal, launches Claude in a tmux session, and greets you at your preferred time every morning.
 
-## Quick Start
+## Features
 
-### 1. Install tmux
+- 🕐 **Scheduled Launch**: Uses macOS launchd to start Claude Code at a configured time
+- 🖥️ **tmux Integration**: Runs Claude in a persistent tmux session for reliability
+- 👋 **Auto Greeting**: Automatically sends "hi" to start the conversation
+- 📝 **Activity Logging**: Records when Claude opens and your first message of the day
+- 🔧 **Easy Configuration**: Simple scripts for install, uninstall, and customization
+
+## How It Works
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    macOS launchd                            │
+│         Triggers at configured time (default: 7:00 AM)      │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│                   morning-claude.sh                         │
+│  1. Logs the open time to history.log                       │
+│  2. Kills any existing tmux session                         │
+│  3. Opens Terminal.app via AppleScript                      │
+│  4. Creates new tmux session named "morning-claude"         │
+│  5. Starts Claude Code CLI                                  │
+│  6. Waits for Claude to load (~14 seconds)                  │
+│  7. Sends Enter to confirm trust prompt                     │
+│  8. Sends "hi" + Enter to start conversation                │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│              hooks/record_first_message.py                  │
+│  (Claude Code UserPromptSubmit hook)                        │
+│  - Detects "hi" trigger from morning script                 │
+│  - Records your first real message of the day               │
+│  - Tracks daily interaction patterns                        │
+└─────────────────────────────────────────────────────────────┘
+```
+
+## Requirements
+
+- **macOS** (uses launchd and AppleScript)
+- **Homebrew** - [Install here](https://brew.sh)
+- **tmux** - Terminal multiplexer
+- **Claude Code CLI** - [Download here](https://claude.ai/download)
+
+## Installation
+
+### Step 1: Install tmux
 
 ```bash
 brew install tmux
 ```
 
-### 2. Clone the project
+### Step 2: Clone the repository
 
 ```bash
 git clone https://github.com/JoeyYu23/morning-claude.git
 cd morning-claude
 ```
 
-### 3. Configure tmux path (Important!)
+### Step 3: Configure tmux path
 
-Find your tmux path:
+Find your tmux installation path:
 
 ```bash
 which tmux
 ```
 
-Edit `morning-claude.sh` and update the TMUX path if different:
+Edit `morning-claude.sh` and update the path if different from default:
 
 ```bash
-TMUX="/opt/homebrew/bin/tmux"  # Update this if your path is different
+TMUX="/opt/homebrew/bin/tmux"  # Apple Silicon default
+# TMUX="/usr/local/bin/tmux"   # Intel Mac default
 ```
 
-> **Note**: Intel Macs typically use `/usr/local/bin/tmux`
-
-### 4. Set your preferred time
+### Step 4: Configure schedule time
 
 Edit `com.user.morning-claude.plist`:
 
@@ -41,30 +86,48 @@ Edit `com.user.morning-claude.plist`:
 <key>StartCalendarInterval</key>
 <dict>
     <key>Hour</key>
-    <integer>9</integer>    <!-- 0-23 -->
+    <integer>7</integer>    <!-- 0-23 (24-hour format) -->
     <key>Minute</key>
     <integer>0</integer>    <!-- 0-59 -->
 </dict>
 ```
 
-### 5. Install the service
+### Step 5: Update paths in plist
+
+Edit `com.user.morning-claude.plist` and replace `/Users/ycy/Projects/morning-claude` with your actual path:
+
+```xml
+<key>ProgramArguments</key>
+<array>
+    <string>/bin/bash</string>
+    <string>/YOUR/PATH/TO/morning-claude/morning-claude.sh</string>
+</array>
+<key>StandardOutPath</key>
+<string>/YOUR/PATH/TO/morning-claude/logs/stdout.log</string>
+<key>StandardErrorPath</key>
+<string>/YOUR/PATH/TO/morning-claude/logs/stderr.log</string>
+```
+
+### Step 6: Install the service
 
 ```bash
 chmod +x *.sh
 ./install.sh
 ```
 
-### 6. Grant permissions
+### Step 7: Grant permissions
 
 Go to **System Settings → Privacy & Security → Accessibility** and enable **Terminal**.
 
-### 7. Verify
+This allows the script to open Terminal and send keystrokes.
+
+### Step 8: Verify installation
 
 ```bash
-# Check service is loaded
+# Check if service is loaded
 launchctl list | grep morning
 
-# Manual test
+# Test manually
 ./morning-claude.sh
 ```
 
@@ -72,38 +135,87 @@ launchctl list | grep morning
 
 | Command | Description |
 |---------|-------------|
-| `./install.sh` | Install the scheduled service |
-| `./uninstall.sh` | Remove the scheduled service |
-| `./morning-claude.sh` | Run manually to test |
+| `./install.sh` | Install the scheduled launchd service |
+| `./uninstall.sh` | Remove the launchd service |
+| `./morning-claude.sh` | Run manually for testing |
 
-## How It Works
+## Project Structure
 
 ```
-┌────────────────────────────────────────────────┐
-│  macOS launchd (runs in background)            │
-│  Triggers at scheduled time                    │
-└────────────────────────────────────────────────┘
-                      ↓
-┌────────────────────────────────────────────────┐
-│  morning-claude.sh                             │
-│  1. Opens Terminal with tmux session           │
-│  2. Starts Claude Code                         │
-│  3. Sends Enter to confirm trust               │
-│  4. Sends "hi" + Enter                         │
-└────────────────────────────────────────────────┘
+morning-claude/
+├── morning-claude.sh           # Main script that opens Claude
+├── install.sh                  # Installs launchd service
+├── uninstall.sh                # Removes launchd service
+├── com.user.morning-claude.plist  # launchd configuration
+├── hooks/
+│   └── record_first_message.py # Claude Code hook for logging
+├── logs/
+│   ├── history.log             # Records when Claude opens
+│   ├── daily_first_message.log # Records first message each day
+│   ├── stdout.log              # launchd standard output
+│   └── stderr.log              # launchd error output
+└── README.md
+```
+
+## Optional: First Message Hook
+
+The `hooks/record_first_message.py` script can be configured as a Claude Code hook to track your daily first message. This helps you see patterns in how you start your day with Claude.
+
+To enable, add to your `~/.claude/settings.json`:
+
+```json
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "command": "python3 /path/to/morning-claude/hooks/record_first_message.py"
+      }
+    ]
+  }
+}
+```
+
+The hook works as follows:
+1. When "hi" is sent (from the morning script), it enters "waiting" state
+2. The next message you send gets recorded to `logs/daily_first_message.log`
+3. Only records once per day
+
+## Logs
+
+View activity logs:
+
+```bash
+# When Claude was opened
+cat logs/history.log
+
+# Your first messages each day
+cat logs/daily_first_message.log
+
+# launchd execution logs
+cat logs/stdout.log
+cat logs/stderr.log
+```
+
+Example `daily_first_message.log`:
+
+```
+2024-01-15 07:02:34 | [hi triggered]
+2024-01-15 07:02:45 | Let's review the pull requests from yesterday
+2024-01-16 07:01:12 | [hi triggered]
+2024-01-16 07:01:28 | Help me debug the authentication issue in the login flow
 ```
 
 ## Troubleshooting
 
 ### "tmux: command not found" in logs
 
-launchd doesn't have the same PATH as your terminal. Use the full path to tmux:
+launchd doesn't inherit your shell's PATH. Use the absolute path to tmux:
 
 ```bash
 # Find your tmux path
 which tmux
 
-# Update morning-claude.sh with the full path
+# Update morning-claude.sh
 TMUX="/opt/homebrew/bin/tmux"
 ```
 
@@ -117,54 +229,68 @@ A previous tmux session is still running:
 
 ### Script doesn't run at scheduled time
 
-1. Check if service is loaded:
+1. Verify service is loaded:
    ```bash
    launchctl list | grep morning
    ```
 
-2. Check logs:
+2. Check if Terminal has Accessibility permissions
+
+3. Check error logs:
    ```bash
-   cat logs/stdout.log
    cat logs/stderr.log
    ```
 
-3. Reinstall:
+4. Reinstall:
    ```bash
    ./uninstall.sh && ./install.sh
    ```
 
-### Claude doesn't auto-confirm or respond
+### Claude doesn't respond or loads slowly
 
-Increase the wait times in `morning-claude.sh`:
+Increase wait times in `morning-claude.sh`:
 
 ```bash
-sleep 6   # Wait for Claude to start (increase if needed)
-sleep 8   # Wait for Claude to load (increase if needed)
+sleep 6   # Wait for Claude to start (increase to 10 if needed)
+sleep 8   # Wait for Claude to load (increase to 12 if needed)
 ```
+
+### Terminal window doesn't appear
+
+Ensure Terminal has "Accessibility" permissions in System Settings.
 
 ## Customization
 
-### Change the message
+### Change the greeting message
 
-Edit `morning-claude.sh` line 24:
+Edit `morning-claude.sh` line 29:
 
 ```bash
-$TMUX send-keys -t "$SESSION_NAME" "hi"  # Change "hi" to your message
+$TMUX send-keys -t "$SESSION_NAME" "hi"  # Change to your preferred greeting
 ```
 
 ### Change the schedule
 
-Edit `com.user.morning-claude.plist`, then reinstall:
+1. Edit `com.user.morning-claude.plist`
+2. Reinstall: `./uninstall.sh && ./install.sh`
 
-```bash
-./uninstall.sh && ./install.sh
-```
+### Run on weekdays only
 
-## Logs
+Edit `com.user.morning-claude.plist`:
 
-```bash
-cat logs/stdout.log   # Standard output
-cat logs/stderr.log   # Errors
+```xml
+<key>StartCalendarInterval</key>
+<array>
+    <dict>
+        <key>Weekday</key>
+        <integer>1</integer>  <!-- Monday -->
+        <key>Hour</key>
+        <integer>7</integer>
+        <key>Minute</key>
+        <integer>0</integer>
+    </dict>
+    <!-- Repeat for Tuesday (2) through Friday (5) -->
+</array>
 ```
 
 ## Uninstall
@@ -173,9 +299,12 @@ cat logs/stderr.log   # Errors
 ./uninstall.sh
 ```
 
-## Requirements
+This removes the launchd service. You can delete the project folder afterward if desired.
 
-- macOS
-- [Homebrew](https://brew.sh)
-- tmux (`brew install tmux`)
-- [Claude Code](https://claude.ai/download) CLI installed
+## License
+
+MIT License - Feel free to modify and share!
+
+## Contributing
+
+Issues and pull requests are welcome. Please feel free to contribute improvements or report bugs.
