@@ -2,6 +2,21 @@
 
 A macOS automation tool that starts your day with Claude Code. Automatically opens Terminal, launches Claude in a tmux session, and greets you at your preferred time every morning.
 
+## Why?
+
+**Claude Code has a 5-hour usage limit reset cycle.** By automatically starting Claude before you wake up, the timer starts early — so by the time you're ready to work, you're closer to your next reset window.
+
+```
+Without Morning Claude:
+  You wake up at 9:00 AM → Start Claude → 5-hour limit begins
+  Heavy usage → Hit limit around 11:00 AM → Wait until 2:00 PM
+
+With Morning Claude (set to 7:00 AM):
+  7:00 AM → Claude auto-starts, timer begins (you're still asleep)
+  9:00 AM → You wake up, 2 hours already elapsed
+  Heavy usage → Hit limit around 11:00 AM → Reset at 12:00 PM (2 hours earlier!)
+```
+
 ## Features
 
 - 🕐 **Scheduled Launch**: Uses macOS launchd to start Claude Code at a configured time
